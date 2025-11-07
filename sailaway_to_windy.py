@@ -67,9 +67,9 @@ class GPSBridge:
                 for line in lines[:-1]:
                     line = line.strip()
                     if line:
-                        # Only process RMC sentences (most accurate and complete)
-                        # RMC contains: time, status, lat, lon, speed, course, date
-                        if '$GPRMC' in line or '$IIRMC' in line:
+                        # Only process GLL sentences (expected by Windy plugin)
+                        # GLL contains: lat, lon, time, status - simpler format
+                        if '$GPGLL' in line or '$IIGLL' in line:
                             # Rate limit: only update every 10 seconds
                             current_time = time.time()
                             if current_time - self.last_update_time >= 10:
