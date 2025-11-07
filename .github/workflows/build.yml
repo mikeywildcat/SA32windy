@@ -9,6 +9,9 @@ on:
     branches: [ main, master ]
   workflow_dispatch:  # Allows manual trigger
 
+permissions:
+  contents: write  # Required for creating releases
+
 jobs:
   build-windows-x64:
     name: Build Windows x64 (Intel/AMD)
