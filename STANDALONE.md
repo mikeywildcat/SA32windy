@@ -10,8 +10,8 @@ The **SailawayWindyBridge.exe** is a standalone executable that contains everyth
 1. Download `SailawayWindyBridge.exe`
 2. Double-click to run
 3. Enter your Sailaway connection details:
-   - IP Address: `localhost` (or your Sailaway server IP)
-   - Port: `5555` (or your configured port)
+   - IP Address: `127.0.0.1` (or your Sailaway server IP)
+   - Port: `10110` (or your configured port)
 4. Click "Start Bridge"
 5. Open Windy with the GPS plugin - your boat appears!
 

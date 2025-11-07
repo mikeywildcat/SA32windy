@@ -36,8 +36,8 @@ A Python application that connects to Sailaway 3's NMEA TCP feed and forwards GP
    ```
 
 3. **Configure connection**:
-   - Enter the IP address of your Sailaway NMEA server (default: `localhost`)
-   - Enter the port number (default: `5555`)
+   - Enter the IP address of your Sailaway NMEA server (default: `127.0.0.1`)
+   - Enter the port number (default: `10110`)
 
 4. **Click "Start Bridge"** to connect
 
@@ -91,9 +91,9 @@ If port 5000 is already in use by another application, you'll need to:
 
 ```
 ┌─────────────┐         ┌──────────────┐         ┌────────────┐
-│  Sailaway 3 │  TCP    │  GPS Bridge  │  HTTP   │   Windy    │
-│ NMEA Server │────────▶│  localhost   │────────▶│   Plugin   │
-│             │  :5555  │   :5000      │         │            │
+│  Sailaway   │         │   SA32windy  │         │   Windy    │
+│ NMEA Server │────────▶│  127.0.0.1   │────────▶│   Plugin   │
+│             │  :10110 │   :5000      │         │            │
 └─────────────┘         └──────────────┘         └────────────┘
 ```
 

@@ -34,7 +34,7 @@ Choose the version for your system:
 
 1. Download `SailawayWindyBridge_x64.exe` from [releases](https://github.com/YOUR_USERNAME/SA32windy/releases)
 2. Double-click to run
-3. Enter your Sailaway connection details (default: `localhost:5555`)
+3. Enter your Sailaway connection details (default: `127.0.0.1:10110`)
 4. Click "Start Bridge"
 5. Open [Windy](https://www.windy.com/) and activate the GPS plugin
 6. Your boat appears on the map! 🎉
@@ -66,13 +66,13 @@ python sailaway_to_windy.py
 
 ```
 ┌─────────────┐         ┌──────────────┐         ┌────────────┐
-│  Sailaway 3 │  TCP    │  GPS Bridge  │  HTTP   │   Windy    │
-│ NMEA Server │────────▶│  localhost   │────────▶│   Plugin   │
-│             │  :5555  │   :5000      │         │            │
+│  Sailaway   │         │   SA32windy  │         │   Windy    │
+│ NMEA Server │────────▶│  127.0.0.1   │────────▶│   Plugin   │
+│             │  :10110 │   :5000      │         │            │
 └─────────────┘         └──────────────┘         └────────────┘
 ```
 
-1. The bridge connects to Sailaway's TCP NMEA feed (default port 5555)
+1. The bridge connects to Sailaway's TCP NMEA feed (default port 10110)
 2. Parses GPS position from NMEA GLL sentences (latitude/longitude)
 3. Sends position updates every 2 seconds for smooth heading display
 4. Serves data via HTTP on `localhost:5000/gps-data`
@@ -89,8 +89,8 @@ python sailaway_to_windy.py
 ## 🔧 Configuration
 
 Default settings:
-- **Sailaway IP**: `localhost` (change if Sailaway runs on another PC)
-- **Sailaway Port**: `5555` (default NMEA TCP port)
+- **Sailaway IP**: `127.0.0.1` (change if Sailaway runs on another PC)
+- **Sailaway Port**: `10110` (default NMEA TCP port)
 - **HTTP Server**: `localhost:5000` (fixed - required by Windy plugin)
 
 ## 🛠️ Building from Source

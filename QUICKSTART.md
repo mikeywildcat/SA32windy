@@ -19,8 +19,8 @@ python sailaway_to_windy.py
 ### 3. Configure Connection
 
 The GUI will open with default settings:
-- **IP Address**: `localhost` (change if Sailaway is on another computer)
-- **Port**: `5555` (default Sailaway NMEA port)
+- **IP Address**: `127.0.0.1` (change if Sailaway is on another computer)
+- **Port**: `10110` (default Sailaway NMEA port)
 
 ### 4. Start the Connection
 
@@ -50,7 +50,7 @@ Your boat's position updates every 2 seconds on the Windy map, with smooth headi
 ### ❌ "Connection refused" error
 - Make sure Sailaway 3 is running
 - Check that NMEA output is enabled in Sailaway settings
-- Verify the port number (default: 5555)
+- Verify the port number (default: 10110)
 
 ### ❌ "Port already in use" error
 - Another application is using port 5000
@@ -78,7 +78,7 @@ Your boat's position updates every 2 seconds on the Windy map, with smooth headi
 │                                               │
 │  Sailaway Connection Settings                │
 │  ┌─────────────────────────────────────────┐ │
-│  │ IP Address: localhost    Port: 5555     │ │
+│  │ IP Address: 127.0.0.1    Port: 10110   │ │
 │  └─────────────────────────────────────────┘ │
 │                                               │
 │  [ Start Bridge ]  [ Stop Bridge ]  [ Clear ]│

@@ -4,20 +4,20 @@
 
 ### Local Sailaway Instance
 ```
-IP Address: localhost (or 127.0.0.1)
-Port: 5555
+IP Address: 127.0.0.1
+Port: 10110
 ```
 
 ### Remote Sailaway Instance (same network)
 ```
 IP Address: 192.168.1.100 (replace with your Sailaway PC's IP)
-Port: 5555
+Port: 10110
 ```
 
 ### Custom Port
 If Sailaway is configured to use a different port:
 ```
-IP Address: localhost
+IP Address: 127.0.0.1
 Port: [Your custom port number]
 ```
 
@@ -40,12 +40,12 @@ Change `5000` to your desired port, then update the Windy plugin to match.
 1. Open Sailaway 3
 2. Go to Settings
 3. Look for NMEA or TCP settings
-4. Note the port number (usually 5555)
+4. Note the port number (usually 10110)
 
 ## Network Setup
 
 ### Same Computer
-- Use `localhost` or `127.0.0.1`
+- Use `127.0.0.1`
 - No firewall configuration needed
 
 ### Different Computers (LAN)
@@ -63,7 +63,7 @@ If connecting from another computer:
 2. Click "Advanced settings"
 3. Click "Inbound Rules" → "New Rule"
 4. Select "Port" → Next
-5. Select "TCP" and enter port 5555 → Next
+5. Select "TCP" and enter port 10110 → Next
 6. Allow the connection → Next
 7. Apply to all profiles → Next
 8. Name it "Sailaway NMEA" → Finish

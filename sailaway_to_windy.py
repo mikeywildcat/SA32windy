@@ -213,13 +213,13 @@ class BridgeGUI:
         # IP Address
         ttk.Label(settings_frame, text="IP Address:").grid(row=0, column=0, sticky=tk.W, pady=5)
         self.ip_entry = ttk.Entry(settings_frame, width=20)
-        self.ip_entry.insert(0, "localhost")
+        self.ip_entry.insert(0, "127.0.0.1")
         self.ip_entry.grid(row=0, column=1, sticky=(tk.W, tk.E), padx=5, pady=5)
         
         # Port
         ttk.Label(settings_frame, text="Port:").grid(row=0, column=2, sticky=tk.W, padx=(10, 0), pady=5)
         self.port_entry = ttk.Entry(settings_frame, width=10)
-        self.port_entry.insert(0, "5555")
+        self.port_entry.insert(0, "10110")
         self.port_entry.grid(row=0, column=3, sticky=tk.W, padx=5, pady=5)
         
         # Control buttons frame

@@ -14,7 +14,10 @@ The Sailaway to Windy GPS Bridge acts as a middleware between Sailaway 3's NMEA 
 ║  ┌─────────────┐         ┌──────────────────┐         ┌──────┐ ║
 ║  │  Sailaway 3 │   TCP   │   Python Bridge  │  HTTP   │Windy │ ║
 ║  │             │────────▶│                  │────────▶│Plugin│ ║
-║  │ NMEA Server │  :5555  │  TCP Receiver    │ :5000   │      │ ║
+║ Sailaway 3  ║         ║      SA32windy Bridge       ║         ║ Windy.com  ║
+║─────────────║         ║─────────────────────────────║         ║────────────║
+║  │ NMEA Server │  :10110 │  TCP Receiver    │ :5000   │      │ ║
+║  └──────────┬──┘         │  (Thread)        │         │      │ ║
 ║  │             │         │       +          │         │      │ ║
 ║  └─────────────┘         │  HTTP Server     │         └──────┘ ║
 ║                          │       +          │                  ║
@@ -30,7 +33,7 @@ The Sailaway to Windy GPS Bridge acts as a middleware between Sailaway 3's NMEA 
 ```
 Sailaway 3 NMEA Output
         ↓
-    TCP Socket (Port 5555)
+    TCP Socket (Port 10110)
         ↓
 Python Socket Receiver
         ↓
