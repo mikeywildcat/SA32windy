@@ -1,0 +1,8 @@
+# No external dependencies required
+# This application uses only Python standard library:
+# - tkinter (GUI)
+# - socket (TCP connection)
+# - http.server (HTTP server for Windy plugin)
+# - threading (concurrent operations)
+
+# Python 3.7+ is required
