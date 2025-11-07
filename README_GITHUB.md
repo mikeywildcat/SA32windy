@@ -73,9 +73,10 @@ python sailaway_to_windy.py
 ```
 
 1. The bridge connects to Sailaway's TCP NMEA feed (default port 5555)
-2. Parses GPS position from NMEA sentences (GLL/RMC)
-3. Serves data via HTTP on `localhost:5000/gps-data`
-4. Windy plugin fetches and displays your boat position in real-time
+2. Parses GPS position from NMEA GLL sentences (latitude/longitude)
+3. Sends position updates every 2 seconds for smooth heading display
+4. Serves data via HTTP on `localhost:5000/gps-data`
+5. Windy plugin fetches data, calculates heading, and displays your boat in real-time
 
 ## 📖 Documentation
 

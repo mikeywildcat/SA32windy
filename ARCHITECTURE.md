@@ -36,7 +36,9 @@ Python Socket Receiver
         ↓
     Buffer & Parse
         ↓
-Extract GLL/RMC Sentences
+Extract GLL Sentences
+        ↓
+Rate Limit (2 seconds)
         ↓
 Store Latest GPS Data
 ```
@@ -61,28 +63,28 @@ Display on Map
 
 ### Input Format (from Sailaway)
 ```
-$GPRMC,163016.360,A,1938.9841,N,12342.9223,W,07.37,332.16,200225,09.58,E*42
-$GPGLL,1938.9841,N,12342.9223,W,163016.360,,A,S*78
+$GPGLL,1938.9841,N,12342.9223,W,163016.360,A,A*5C
+$IIGLL,1938.9841,N,12342.9223,W,163016.360,A,A*5C
 $GPGGA,163016.360,1938.9841,N,12342.9223,W,1,12,0,0,M,0,M,0000,*6E
 ```
 
 ### Filtered Sentences (sent to Windy)
-- **GPGLL**: Geographic Position - Latitude/Longitude
-- **GPRMC**: Recommended Minimum Navigation Information
+- **GPGLL/IIGLL**: Geographic Position - Latitude/Longitude only
+- Updates sent every 2 seconds for smooth heading updates
+- The Windy plugin calculates boat heading from consecutive position changes
 
 ### Example GPGLL Breakdown
 ```
-$GPGLL,1938.9841,N,12342.9223,W,163016.360,,A,S*78
-  │      │        │    │        │      │      │ │  │
-  │      │        │    │        │      │      │ │  └─ Checksum
+$GPGLL,1938.9841,N,12342.9223,W,163016.360,A,A*5C
+  │      │        │    │        │      │      │ │
   │      │        │    │        │      │      │ └─── Mode indicator
-  │      │        │    │        │      │      └───── Status
+  │      │        │    │        │      │      └───── Status (A=valid)
   │      │        │    │        │      └──────────── Time (UTC)
   │      │        │    │        └─────────────────── Longitude direction
   │      │        │    └──────────────────────────── Longitude (123°42.9223')
   │      │        └───────────────────────────────── Latitude direction
   │      └────────────────────────────────────────── Latitude (19°38.9841')
-  └───────────────────────────────────────────────── Sentence ID
+  └───────────────────────────────────────────────── Sentence ID (GP=GPS, II=Integrated)
 ```
 
 ## Component Details
@@ -91,7 +93,8 @@ $GPGLL,1938.9841,N,12342.9223,W,163016.360,,A,S*78
 - **Purpose**: Continuously receives NMEA data from Sailaway
 - **Implementation**: Threaded socket connection
 - **Buffer**: Handles incomplete sentences
-- **Filter**: Only processes GLL and RMC sentences
+- **Filter**: Only processes GLL sentences (GPGLL/IIGLL)
+- **Rate Limiting**: Updates every 2 seconds for optimal performance
 - **Update**: Stores latest position data
 
 ### HTTP Server Thread
@@ -145,9 +148,10 @@ $GPGLL,1938.9841,N,12342.9223,W,163016.360,,A,S*78
 
 ## Performance Characteristics
 
-- **Update Rate**: ~2Hz (500ms polling interval)
+- **Update Rate**: GPS position sent every 2 seconds (configurable in code)
 - **Latency**: < 100ms typical
 - **Memory**: < 50MB typical usage
+- **Network**: Minimal bandwidth (~50 bytes per update)
 - **CPU**: < 1% typical usage
 
 ## Security Considerations

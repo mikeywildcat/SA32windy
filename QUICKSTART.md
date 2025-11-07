@@ -29,18 +29,19 @@ Click the **"Start Bridge"** button
 You should see:
 - ✅ Status changes to "Connected" (green)
 - ✅ Activity log shows connection messages
-- ✅ GPS data appears in the log
+- ✅ GPS data appears in the log (updates every 2 seconds)
 
 ### 5. Open Windy
 
 1. Go to [Windy.com](https://www.windy.com/)
 2. Open the GPS from TCP plugin
 3. Click "Update Windy" or refresh
-4. Your boat should appear on the map! 🎉
+4. Your boat should appear on the map with a red arrow! 🎉
+5. The arrow rotates to show your heading as you change course
 
 ### 6. Enjoy!
 
-Your boat's position will update in real-time on the Windy map as you sail in Sailaway 3.
+Your boat's position updates every 2 seconds on the Windy map, with smooth heading changes as you sail in Sailaway 3.
 
 ---
 

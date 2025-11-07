@@ -9,8 +9,8 @@ A Python application that connects to Sailaway 3's NMEA TCP feed and forwards GP
 - 🖥️ Simple GUI to configure connection settings
 - 📊 Real-time activity log
 - ⚡ Automatic reconnection handling
-- ⏱️ Optimized updates - sends position every 10 seconds
-- 🎯 Accurate data - uses RMC sentences (most complete GPS information)
+- ⏱️ Optimized updates - sends position every 2 seconds for smooth heading updates
+- 🎯 Accurate data - uses GLL sentences (format expected by Windy plugin)
 
 ## Requirements
 
@@ -48,15 +48,17 @@ A Python application that connects to Sailaway 3's NMEA TCP feed and forwards GP
 
 ## Sailaway NMEA Data Format
 
-The application processes NMEA sentences from Sailaway, particularly:
-- `$GPGLL` - Geographic Position (Latitude/Longitude)
-- `$GPRMC` - Recommended Minimum Navigation Information
+The application processes NMEA sentences from Sailaway, specifically:
+- `$GPGLL` / `$IIGLL` - Geographic Position (Latitude/Longitude)
+
+The Windy plugin uses position updates to calculate your boat's heading (the direction the arrow points).
 
 Example data:
 ```
-$GPRMC,163016.360,A,1938.9841,N,12342.9223,W,07.37,332.16,200225,09.58,E*42
-$GPGLL,1938.9841,N,12342.9223,W,163016.360,,A,S*78
+$GPGLL,1938.9841,N,12342.9223,W,163016.360,A,A*5C
 ```
+
+Position updates are sent every 2 seconds for smooth, responsive heading updates.
 
 ## Windy Plugin
 
