@@ -23,6 +23,7 @@ class GPSBridge:
         self.http_server = None
         self.http_thread = None
         self.log_callback = None
+        self.last_update_time = 0  # Track last update time for rate limiting
         
     def set_log_callback(self, callback):
         """Set the callback function for logging"""
@@ -66,10 +67,15 @@ class GPSBridge:
                 for line in lines[:-1]:
                     line = line.strip()
                     if line:
-                        # Look for GLL or RMC sentences (these contain position data)
-                        if 'GLL' in line or 'RMC' in line:
-                            self.latest_gps_data = line
-                            self.log(f"GPS: {line}")
+                        # Only process RMC sentences (most accurate and complete)
+                        # RMC contains: time, status, lat, lon, speed, course, date
+                        if '$GPRMC' in line or '$IIRMC' in line:
+                            # Rate limit: only update every 10 seconds
+                            current_time = time.time()
+                            if current_time - self.last_update_time >= 10:
+                                self.latest_gps_data = line
+                                self.last_update_time = current_time
+                                self.log(f"GPS: {line}")
                             
             except socket.timeout:
                 continue

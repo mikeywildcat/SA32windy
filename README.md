@@ -9,6 +9,8 @@ A Python application that connects to Sailaway 3's NMEA TCP feed and forwards GP
 - 🖥️ Simple GUI to configure connection settings
 - 📊 Real-time activity log
 - ⚡ Automatic reconnection handling
+- ⏱️ Optimized updates - sends position every 10 seconds
+- 🎯 Accurate data - uses RMC sentences (most complete GPS information)
 
 ## Requirements
 
