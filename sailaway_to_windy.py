@@ -16,7 +16,7 @@ class GPSBridge:
     """Handles connection to Sailaway and GPS data management"""
     
     def __init__(self):
-        self.latest_gps_data = "No data received yet..."
+        self.latest_gps_data = ""  # Start with empty string instead of error message
         self.is_running = False
         self.tcp_socket = None
         self.tcp_thread = None
@@ -142,7 +142,12 @@ class GPSBridge:
                     self.send_header('Content-type', 'text/plain')
                     self.send_header('Access-Control-Allow-Origin', '*')
                     self.end_headers()
-                    self.wfile.write(bridge.latest_gps_data.encode())
+                    # Only send data if we have valid GPS data
+                    if bridge.latest_gps_data:
+                        self.wfile.write(bridge.latest_gps_data.encode())
+                    else:
+                        # Send empty response if no data yet
+                        self.wfile.write(b'')
                 else:
                     self.send_response(404)
                     self.end_headers()
