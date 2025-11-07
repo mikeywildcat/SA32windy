@@ -56,22 +56,31 @@ jobs:
       with:
         files: |
           dist/SailawayWindyBridge_x64.exe
-          README.md
-          QUICKSTART.md
-          STANDALONE.md
         body: |
           ## Sailaway to Windy GPS Bridge ${{ github.ref_name }}
           
-          ### Downloads
-          - **SailawayWindyBridge_x64.exe** - For most Windows PCs (Intel/AMD)
-          - For ARM64 Windows, download the Python script and run locally
+          Connect your Sailaway 3 GPS to Windy.com for real-time boat tracking with heading display!
           
-          ### What's New
-          See CHANGELOG for details.
+          ### 📥 Download
+          - **SailawayWindyBridge_x64.exe** - For Windows (Intel/AMD x64 systems)
           
-          ### Installation
-          1. Download the .exe for your system
-          2. Double-click to run
-          3. See QUICKSTART.md for usage instructions
+          ### ⚡ Quick Start
+          1. Download `SailawayWindyBridge_x64.exe`
+          2. Double-click to run (no installation needed)
+          3. Default settings work automatically (127.0.0.1:10110)
+          4. Click "Start Bridge"
+          5. Open Windy.com and activate the GPS from TCP plugin
+          
+          ### 📖 Documentation
+          See [README.md](https://github.com/mikeywildcat/SA32windy#readme) for complete instructions, troubleshooting, and advanced configuration.
+          
+          ### ✨ Features
+          - 2-second GPS updates for smooth heading display
+          - Red arrow shows boat direction on Windy map
+          - Simple GUI - no configuration files needed
+          - Auto-reconnection on connection drops
+          
+          ---
+          **Note**: For ARM64 Windows systems, run the Python script directly from the repository.
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
