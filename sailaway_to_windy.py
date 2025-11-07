@@ -70,9 +70,9 @@ class GPSBridge:
                         # Only process GLL sentences (expected by Windy plugin)
                         # GLL contains: lat, lon, time, status - simpler format
                         if '$GPGLL' in line or '$IIGLL' in line:
-                            # Rate limit: only update every 10 seconds
+                            # Rate limit: only update every 2 seconds
                             current_time = time.time()
-                            if current_time - self.last_update_time >= 10:
+                            if current_time - self.last_update_time >= 2:
                                 self.latest_gps_data = line
                                 self.last_update_time = current_time
                                 self.log(f"GPS: {line}")
