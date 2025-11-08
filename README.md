@@ -9,9 +9,9 @@ A lightweight application that connects Sailaway 3's NMEA TCP feed to the Windy 
 - 🖥️ **Simple GUI** - Easy-to-use interface, no configuration files needed
 - 📊 **Real-time Activity Log** - See exactly what's happening
 - ⚡ **Auto-reconnection** - Handles connection drops gracefully
-- ⏱️ **Smooth Updates** - Position sent every 2 seconds for responsive heading
+- ⏱️ **Always Fresh Data** - No rate limiting - plugin always gets latest position for smooth heading
 - 🎯 **Accurate Navigation** - Uses GLL NMEA sentences for precise positioning
-- 🧭 **Dynamic Heading** - Red arrow on map rotates based on your boat's course
+- 🧭 **Stable Heading** - Red arrow on map rotates smoothly without drifting back to north
 
 ## Quick Start (Standalone Executable)
 
@@ -83,10 +83,10 @@ A lightweight application that connects Sailaway 3's NMEA TCP feed to the Windy 
    - **Port**: `10110` (Sailaway's default NMEA port)
    - Change these only if Sailaway runs on another computer or uses custom port
 
-4. **Start the Bridge**
+3. **Start the Bridge**
    - Click **"Start Bridge"** button
    - Status should show **"● Connected"** (green)
-   - Activity log will show GPS data arriving every 2 seconds
+   - Activity log will show GPS data arriving (logged every 0.5 seconds)
 
 5. **Open Windy**
    - Navigate to [Windy.com](https://www.windy.com/)
@@ -94,10 +94,10 @@ A lightweight application that connects Sailaway 3's NMEA TCP feed to the Windy 
    - Click **"Update Windy"** button in the plugin
    - Your boat appears with a **red arrow** showing heading! 🎉
 
-6. **Navigation**
+5. **Navigation**
    - Arrow rotates automatically based on your course
    - Use plugin's "Follow Ship" button to keep boat centered
-   - Position updates every 2 seconds for smooth movement
+   - Position updates continuously - no rate limiting for smooth, stable heading
 
 ## Configuration
 
@@ -107,7 +107,7 @@ A lightweight application that connects Sailaway 3's NMEA TCP feed to the Windy 
 Sailaway IP:    127.0.0.1
 Sailaway Port:  10110
 HTTP Endpoint:  localhost:5000/gps-data (fixed, required by Windy plugin)
-Update Rate:    Every 2 seconds
+Update Rate:    Continuous - always serves latest position (no rate limiting)
 ```
 
 ### Advanced Configuration
@@ -155,13 +155,13 @@ If Sailaway uses a different port:
 ### Data Flow
 
 1. **Sailaway** outputs NMEA sentences via TCP on port 10110
-2. **SA32windy** connects and receives NMEA data
+2. **SA32windy** connects and receives NMEA data continuously
 3. **Filters** for GLL sentences (Geographic Position: Lat/Lon)
-4. **Rate limits** to 2-second intervals for optimal performance
+4. **Stores latest** position data with no rate limiting
 5. **HTTP server** provides data at `localhost:5000/gps-data`
 6. **Windy plugin** fetches GPS data every 500ms
 7. **Plugin calculates** boat heading from consecutive positions
-8. **Map displays** boat position with rotating arrow
+8. **Map displays** boat position with stable, accurate arrow rotation
 
 ### NMEA Sentence Details
 
@@ -170,8 +170,21 @@ If Sailaway uses a different port:
 - Text-based protocol for marine instruments
 - Sailaway outputs realistic NMEA data like real GPS devices
 
-**GLL Sentence Format:**
+**NMEA Sentence Format:**
 ```
+$GPRMC,163016.360,A,1938.9841,N,12342.9223,W,5.2,135.0,080325,,,A*6F
+  │       │        │    │        │    │        │   │    │       │
+  │       │        │    │        │    │        │   │    │       └─ Mode
+  │       │        │    │        │    │        │   │    └───────── Date
+  │       │        │    │        │    │        │   └────────────── COG (degrees)
+  │       │        │    │        │    │        └────────────────── Speed (knots)
+  │       │        │    │        │    └─────────────────────────── Lon (dddmm.mmmm,W)
+  │       │        │    │        └──────────────────────────────── Lat (ddmm.mmmm,N)
+  │       │        │    └───────────────────────────────────────── Status (A=Valid)
+  │       │        └────────────────────────────────────────────── UTC Time
+  │       └─────────────────────────────────────────────────────── RMC ID
+  └─────────────────────────────────────────────────────────────── GPS Prefix
+
 $GPGLL,1938.9841,N,12342.9223,W,163016.360,A,A*5C
   │      │        │    │        │      │      │ │
   │      │        │    │        │      │      │ └─ Mode
@@ -184,20 +197,24 @@ $GPGLL,1938.9841,N,12342.9223,W,163016.360,A,A*5C
   └─────────────────────────────────────────────── Sentence ID
 ```
 
-**Why GLL instead of RMC?**
-- Windy plugin designed to parse GLL format
-- GLL provides clean position data
-- Plugin calculates heading from position changes (more accurate than compass heading)
+**Why RMC is Better:**
+- **RMC** includes Course Over Ground (COG) directly from GPS - more accurate and stable
+- **GLL** only has position - plugin must calculate COG from position changes
+- Calculation from position changes can be jittery, especially at slow speeds
+- Bridge accepts both sentence types - RMC preferred when available
 
 ### Heading Calculation
 
 The **red arrow** direction is calculated by the Windy plugin:
 
-1. Plugin receives position every 2 seconds
-2. Compares new position with previous position
-3. Calculates bearing (angle) between the two points
-4. Rotates arrow to match calculated bearing
-5. Result: Arrow points in direction of actual boat movement (Course Over Ground)
+1. Plugin polls for position every 500ms (0.5 seconds)
+2. Bridge always provides the latest GPS position from Sailaway
+3. Plugin compares new position with previous position
+4. Calculates bearing (angle) between the two points
+5. Rotates arrow to match calculated bearing
+6. Result: Stable arrow pointing in direction of actual boat movement (Course Over Ground)
+
+**Key to stable heading**: By not rate limiting the GPS data, the plugin always receives fresh position updates whenever it polls, ensuring smooth and stable arrow rotation without drift.
 
 ## Troubleshooting
 
@@ -225,24 +242,24 @@ The **red arrow** direction is calculated by the Windy plugin:
 - Plugin looking at wrong URL
 
 **Solutions:**
-1. Check bridge shows **"● Connected"** (green status)
-2. Verify GPS data appears in activity log every 2 seconds
+3. Check bridge shows **"● Connected"** (green status)
+2. Verify GPS data appears in activity log (displayed every 0.5 seconds)
 3. Confirm plugin URL is `http://localhost:5000/gps-data`
 4. Click "Update Windy" button in the plugin
 5. Refresh your browser
 
-#### ❌ Position shows but arrow doesn't rotate
+#### ❌ Position shows but arrow doesn't rotate or drifts back to north
 
 **Possible causes:**
 - Boat not moving (no course change)
-- Updates too infrequent
-- Sailing in straight line
+- Moving too slowly for significant position changes
+- Sailing in perfectly straight line
 
 **Solutions:**
 1. Turn your boat to see arrow rotation
-2. Arrow updates based on position changes
+2. Arrow updates based on actual position changes between plugin polls
 3. More movement = more accurate heading display
-4. Wait 2-4 seconds between position updates
+4. Verify you're actually under sail/power and moving
 
 #### ❌ "Port 5000 already in use"
 
@@ -261,24 +278,27 @@ The **red arrow** direction is calculated by the Windy plugin:
 - Browser security blocking localhost
 - Plugin not properly installed
 - Cache issues
+- Stale data in plugin
 
 **Solutions:**
 1. Try a different browser (Chrome, Edge, Firefox)
 2. Clear browser cache
 3. Reinstall Windy plugin
-4. Check browser console for errors (F12)
+4. Click "Update Windy" button in plugin to force refresh
+5. Check browser console for errors (F12)
 
 ### Debugging Tips
 
 **Enable detailed logging:**
 - Watch the Activity Log in SA32windy
-- GPS data should appear every 2 seconds when connected
+- GPS data should appear every 0.5 seconds when connected (logging interval)
 - Format: `GPS: $GPGLL,ddmm.mmmm,N,dddmm.mmmm,E,...`
+- Data is updated continuously but logged at 0.5-second intervals to avoid flooding the log
 
 **Test the HTTP endpoint:**
 - Open browser to `http://localhost:5000/gps-data`
 - Should see the latest NMEA sentence
-- Refreshing should show updated data (every 2 seconds)
+- Refreshing should show updated data continuously
 
 **Check network connectivity:**
 - For remote Sailaway, verify both PCs on same network
@@ -354,19 +374,21 @@ GitHub Actions automatically builds and attaches `.exe` to release.
 
 - **Memory Usage**: ~50MB typical
 - **CPU Usage**: <1% idle, ~2% when processing
-- **Network Bandwidth**: ~100 bytes per update (minimal)
+- **Network Bandwidth**: ~200 bytes per GPS update from Sailaway (minimal)
 - **Latency**: <100ms from Sailaway to Windy
-- **Update Rate**: Position every 2 seconds (configurable in code)
+- **Update Rate**: Continuous (no rate limiting - always serves latest position)
 
 ### Code Modification
 
 Want to customize? The code is simple and well-commented:
 
-**Change update frequency:**
+**Change log display frequency:**
 ```python
-# In receive_nmea_data() method, find:
-if current_time - self.last_update_time >= 2:  # Change 2 to desired seconds
+# In sailaway_to_windy.py, find at the top:
+GPS_LOG_INTERVAL_SECONDS = 0.5  # Change to desired seconds (how often to display logs)
 ```
+
+**Note**: The actual GPS data is updated continuously (no rate limiting). This constant only controls how often updates are logged to the activity window to prevent flooding.
 
 **Change HTTP port** (requires Windy plugin reconfiguration):
 ```python
@@ -377,7 +399,9 @@ self.http_server = HTTPServer(('localhost', 5000), GPSHandler)  # Change 5000
 **Use different NMEA sentences:**
 ```python
 # In receive_nmea_data() method, find:
-if '$GPGLL' in line or '$IIGLL' in line:  # Change to $GPRMC, $GPGGA, etc.
+if ('$GPRMC' in line or '$IIRMC' in line or   # RMC has COG data
+    '$GPGLL' in line or '$IIGLL' in line):     # GLL position only
+    # Change to use only specific types if needed
 ```
 
 ### Dependencies
@@ -400,7 +424,7 @@ No external packages needed! 🎉
 - **Repository**: https://github.com/YannKerherve/Windy-plugin-GPS-from-TCP
 - **Endpoint**: `http://localhost:5000/gps-data`
 - **Update Frequency**: Plugin polls every 500ms
-- **Supported Formats**: GLL and RMC NMEA sentences
+- **Supported Formats**: RMC (preferred - includes COG) and GLL (position only) NMEA sentences
 
 ### Plugin Features
 
@@ -438,10 +462,14 @@ A: Not with a single instance. You'd need multiple Sailaway instances on differe
 A: No! Everything runs locally on your computer/network. No internet connection required except for loading Windy.com.
 
 **Q: The arrow spins randomly sometimes?**
-A: This is normal when stationary or moving very slowly. The plugin calculates heading from position changes, so minimal movement can cause erratic heading.
+A: This can happen when:
+- Boat is stationary or moving very slowly
+- GPS position changes are smaller than the plugin's bearing calculation threshold
+- This is normal behavior and will stabilize once moving at normal sailing speeds
+- The plugin needs sufficient position change between polls to calculate accurate bearing
 
 **Q: Can I customize the update rate?**
-A: Yes! Edit the code and change the `2` in `if current_time - self.last_update_time >= 2:` to your desired interval in seconds.
+A: The GPS data is provided continuously with no rate limiting for best arrow stability. You can change the logging display interval by editing `GPS_LOG_INTERVAL_SECONDS` in the code, but this only affects what you see in the log window, not what the Windy plugin receives.
 
 ## Contributing
 

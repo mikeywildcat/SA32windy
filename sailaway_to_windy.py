@@ -16,7 +16,9 @@ class GPSBridge:
     """Handles connection to Sailaway and GPS data management"""
     
     def __init__(self):
-        self.latest_gps_data = ""  # Start with empty string instead of error message
+        self.latest_gps_data = ""  # Current GPS data being served to plugin
+        self.previous_gps_data = ""  # Track previous NMEA sentence
+        self.last_sent_position = (0.0, 0.0, 0.0)  # lat, lon, timestamp
         self.is_running = False
         self.tcp_socket = None
         self.tcp_thread = None
@@ -67,15 +69,46 @@ class GPSBridge:
                 for line in lines[:-1]:
                     line = line.strip()
                     if line:
-                        # Only process GLL sentences (expected by Windy plugin)
-                        # GLL contains: lat, lon, time, status - simpler format
+                        # Only process GLL sentences - Windy plugin can only parse GLL
+                        # Plugin calculates bearing from position changes
+                        # Strategy: Send positions with meaningful separation (distance OR time)
                         if '$GPGLL' in line or '$IIGLL' in line:
-                            # Rate limit: only update every 2 seconds
-                            current_time = time.time()
-                            if current_time - self.last_update_time >= 2:
-                                self.latest_gps_data = line
-                                self.last_update_time = current_time
-                                self.log(f"GPS: {line}")
+                            if line != self.previous_gps_data:
+                                try:
+                                    # Parse position from GLL: $GPGLL,ddmm.mmmm,N/S,dddmm.mmmm,E/W,...
+                                    parts = line.split(',')
+                                    if len(parts) >= 5 and parts[1] and parts[3]:
+                                        # Convert NMEA to decimal degrees
+                                        lat_str, lat_dir = parts[1], parts[2]
+                                        lon_str, lon_dir = parts[3], parts[4]
+                                        
+                                        lat = float(lat_str[:2]) + float(lat_str[2:]) / 60.0
+                                        if lat_dir == 'S':
+                                            lat = -lat
+                                        lon = float(lon_str[:3]) + float(lon_str[3:]) / 60.0
+                                        if lon_dir == 'W':
+                                            lon = -lon
+                                        
+                                        # Check distance and time since last update
+                                        last_lat, last_lon, last_time = self.last_sent_position
+                                        current_time = time.time()
+                                        distance = ((lat - last_lat)**2 + (lon - last_lon)**2)**0.5
+                                        time_delta = current_time - last_time
+                                        
+                                        # Send if: moved 0.0002° (~22m) OR 2 seconds elapsed OR first position
+                                        if distance >= 0.0002 or time_delta >= 2.0 or last_lat == 0.0:
+                                            self.latest_gps_data = line
+                                            self.previous_gps_data = line
+                                            self.last_sent_position = (lat, lon, current_time)
+                                            
+                                            # Log rate limited
+                                            if current_time - self.last_update_time >= 0.5:
+                                                self.last_update_time = current_time
+                                                self.log(f"GPS: Δ{distance:.6f}° ({time_delta:.1f}s) {line[:60]}...")
+                                except (ValueError, IndexError):
+                                    # Parse error - use sentence as-is
+                                    self.latest_gps_data = line
+                                    self.previous_gps_data = line
                             
             except socket.timeout:
                 continue
