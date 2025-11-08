@@ -22,8 +22,10 @@ A lightweight application that connects Sailaway 3's NMEA TCP feed to the Windy 
    - Download `sailaway_to_windy.exe` (Windows x64)
 
 2. **Install Windy Plugin**:
-   - Download the [Windy GPS from TCP plugin](https://github.com/YannKerherve/Windy-plugin-GPS-from-TCP)
-   - Follow the plugin installation instructions
+   - Go to [Windy.com](https://www.windy.com/)
+   - Open the plugin menu (bottom-right corner)
+   - Search for "GPS from TCP" and install it
+   - **Note**: You only need the Windy plugin - this app replaces the separate bridge/server application
 
 3. **Run the application**:
    - Double-click `sailaway_to_windy.exe`
