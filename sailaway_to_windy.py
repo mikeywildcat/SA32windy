@@ -12,7 +12,7 @@ import time
 from datetime import datetime
 
 # Version information
-VERSION = "1.2.0"
+VERSION = "1.2.1"
 RELEASE_DATE = "2025-11-08"
 GITHUB_URL = "https://github.com/mikeywildcat/SA32windy"
 
@@ -106,10 +106,17 @@ class GPSBridge:
                                         lat_str, lat_dir = parts[1], parts[2]
                                         lon_str, lon_dir = parts[3], parts[4]
                                         
-                                        lat = float(lat_str[:2]) + float(lat_str[2:]) / 60.0
+                                        # Latitude: ddmm.mmmm where dd = degrees (00-90), mm.mmmm = minutes
+                                        lat_degrees = int(lat_str[:2])
+                                        lat_minutes = float(lat_str[2:])
+                                        lat = lat_degrees + (lat_minutes / 60.0)
                                         if lat_dir == 'S':
                                             lat = -lat
-                                        lon = float(lon_str[:3]) + float(lon_str[3:]) / 60.0
+                                        
+                                        # Longitude: dddmm.mmmm where ddd = degrees (000-180), mm.mmmm = minutes
+                                        lon_degrees = int(lon_str[:3])
+                                        lon_minutes = float(lon_str[3:])
+                                        lon = lon_degrees + (lon_minutes / 60.0)
                                         if lon_dir == 'W':
                                             lon = -lon
                                         
@@ -243,11 +250,13 @@ class GPSBridge:
                                         minutes = (coord - degrees) * 60
                                         # Increase minutes precision to 5 decimals so small
                                         # extrapolated movements are visible in the GLL string.
-                                        return f"{degrees:02d}{minutes:07.5f}"
+                                        # Format: dd + mm.mmmmm (2 digits for degrees, 2 for whole minutes, 5 decimals)
+                                        return f"{degrees:02d}{minutes:08.5f}"
                                     else:
                                         degrees = int(coord)
                                         minutes = (coord - degrees) * 60
-                                        return f"{degrees:03d}{minutes:07.5f}"
+                                        # Format: ddd + mm.mmmmm (3 digits for degrees, 2 for whole minutes, 5 decimals)
+                                        return f"{degrees:03d}{minutes:08.5f}"
 
                                 lat_str = to_ddmm(new_lat, is_lat=True)
                                 lat_dir = 'N' if new_lat >= 0 else 'S'
