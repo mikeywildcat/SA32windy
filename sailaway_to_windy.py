@@ -6,10 +6,15 @@ Connects to Sailaway 3's NMEA TCP feed and serves it to the Windy GPS plugin
 import socket
 import threading
 import tkinter as tk
-from tkinter import ttk, scrolledtext
+from tkinter import ttk, scrolledtext, messagebox
 from http.server import HTTPServer, BaseHTTPRequestHandler
 import time
 from datetime import datetime
+
+# Version information
+VERSION = "1.2.0"
+RELEASE_DATE = "2025-11-08"
+GITHUB_URL = "https://github.com/mikeywildcat/SA32windy"
 
 
 class GPSBridge:
@@ -295,7 +300,7 @@ class BridgeGUI:
     def __init__(self):
         self.bridge = GPSBridge()
         self.window = tk.Tk()
-        self.window.title("Sailaway to Windy GPS Bridge")
+        self.window.title(f"Sailaway to Windy GPS Bridge v{VERSION}")
         self.window.geometry("700x550")
         self.window.resizable(True, True)
         
@@ -362,6 +367,11 @@ class BridgeGUI:
                                       command=self.clear_log, width=15)
         self.clear_button.grid(row=0, column=2, padx=5)
         
+        # About button
+        self.about_button = ttk.Button(button_frame, text="About", 
+                                      command=self.show_about, width=15)
+        self.about_button.grid(row=0, column=3, padx=5)
+        
         # Status frame
         status_frame = ttk.LabelFrame(main_frame, text="Status", padding="10")
         status_frame.grid(row=3, column=0, columnspan=3, sticky=(tk.W, tk.E), pady=(0, 10))
@@ -373,6 +383,10 @@ class BridgeGUI:
         # Info label
         info_text = "Windy plugin will connect to: http://localhost:5000/gps-data"
         ttk.Label(status_frame, text=info_text, foreground="gray").grid(row=1, column=0, sticky=tk.W, pady=(5, 0))
+        
+        # Version label
+        version_text = f"v{VERSION} | {RELEASE_DATE}"
+        ttk.Label(status_frame, text=version_text, foreground="gray", font=('Arial', 8)).grid(row=2, column=0, sticky=tk.W, pady=(2, 0))
         
         # Log frame
         log_frame = ttk.LabelFrame(main_frame, text="Activity Log", padding="10")
@@ -438,6 +452,29 @@ class BridgeGUI:
         self.ip_entry.configure(state=tk.NORMAL)
         self.port_entry.configure(state=tk.NORMAL)
         self.status_label.configure(text="● Not connected", foreground="red")
+    
+    def show_about(self):
+        """Show About dialog"""
+        about_text = f"""Sailaway 3 to Windy GPS Bridge
+Version {VERSION}
+Released: {RELEASE_DATE}
+
+A lightweight application that connects Sailaway 3's 
+NMEA TCP feed to the Windy GPS plugin for real-time 
+boat position and heading display on Windy.com.
+
+Features:
+• Dead-reckoning position extrapolation
+• Stable heading without drift
+• Real-time GPS data streaming
+• Simple, user-friendly interface
+
+GitHub: {GITHUB_URL}
+
+Made with ⛵ for the Sailaway community
+Open Source • MIT License"""
+        
+        messagebox.showinfo("About SA32windy Bridge", about_text)
         
     def on_closing(self):
         """Handle window closing"""
