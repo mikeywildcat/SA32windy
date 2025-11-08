@@ -9,9 +9,9 @@ A lightweight application that connects Sailaway 3's NMEA TCP feed to the Windy 
 - 🖥️ **Simple GUI** - Easy-to-use interface, no configuration files needed
 - 📊 **Real-time Activity Log** - See exactly what's happening
 - ⚡ **Auto-reconnection** - Handles connection drops gracefully
-- ⏱️ **Always Fresh Data** - No rate limiting - plugin always gets latest position for smooth heading
-- 🎯 **Accurate Navigation** - Uses GLL NMEA sentences for precise positioning
-- 🧭 **Stable Heading** - Red arrow on map rotates smoothly without drifting back to north
+- 🧭 **Dead-Reckoning Extrapolation** - Smooth position updates between GPS readings using RMC course and speed
+- 🎯 **Accurate Navigation** - Uses GLL NMEA sentences for precise positioning with sub-meter precision
+- 🎪 **Stable Heading** - Red arrow on map rotates smoothly without drifting back to north
 
 ## Quick Start (Standalone Executable)
 
@@ -154,14 +154,18 @@ If Sailaway uses a different port:
 
 ### Data Flow
 
-1. **Sailaway** outputs NMEA sentences via TCP on port 10110
+1. **Sailaway** outputs NMEA sentences via TCP on port 10110 (both RMC and GLL)
 2. **SA32windy** connects and receives NMEA data continuously
-3. **Filters** for GLL sentences (Geographic Position: Lat/Lon)
-4. **Stores latest** position data with no rate limiting
-5. **HTTP server** provides data at `localhost:5000/gps-data`
-6. **Windy plugin** fetches GPS data every 500ms
-7. **Plugin calculates** boat heading from consecutive positions
-8. **Map displays** boat position with stable, accurate arrow rotation
+3. **Parses RMC** sentences to extract Course Over Ground (COG) and speed in knots
+4. **Parses GLL** sentences for precise Geographic Position (Lat/Lon)
+5. **Dead-reckoning extrapolation**: Between real GPS updates, generates synthetic positions by:
+   - Computing distance traveled = speed × time elapsed
+   - Moving position along last known COG using spherical geometry
+   - Creating GLL sentences with extrapolated coordinates (5 decimal precision)
+6. **HTTP server** provides data at `localhost:5000/gps-data`
+7. **Windy plugin** fetches GPS data every 500ms and receives smoothly changing positions
+8. **Plugin calculates** boat heading from consecutive positions (always sees meaningful deltas)
+9. **Map displays** boat position with stable, accurate arrow rotation - no drift to north!
 
 ### NMEA Sentence Details
 
@@ -197,24 +201,30 @@ $GPGLL,1938.9841,N,12342.9223,W,163016.360,A,A*5C
   └─────────────────────────────────────────────── Sentence ID
 ```
 
-**Why RMC is Better:**
-- **RMC** includes Course Over Ground (COG) directly from GPS - more accurate and stable
-- **GLL** only has position - plugin must calculate COG from position changes
-- Calculation from position changes can be jittery, especially at slow speeds
-- Bridge accepts both sentence types - RMC preferred when available
+**Why Dead-Reckoning Matters:**
+- **RMC** provides Course Over Ground (COG) and speed directly from Sailaway
+- **GLL** provides precise position but the Windy plugin must calculate bearing from position changes
+- **Problem**: When the plugin polls faster (500ms) than significant position changes occur, it receives identical or nearly identical positions, causing unstable bearing calculations and the arrow to revert to north
+- **Solution**: The bridge uses dead-reckoning to extrapolate small position changes between real GPS updates:
+  - Captures COG and speed from RMC sentences
+  - Computes distance traveled since last update: `distance = speed × time_elapsed`
+  - Moves the position along the COG bearing using spherical geometry
+  - Generates synthetic GLL sentences with extrapolated coordinates
+  - Uses minimum synthetic speed (0.5 m/s) when stationary to ensure visible position deltas
+- **Result**: Plugin always receives meaningful position changes at its 500ms poll rate, producing stable, smooth heading calculations
 
 ### Heading Calculation
 
 The **red arrow** direction is calculated by the Windy plugin:
 
 1. Plugin polls for position every 500ms (0.5 seconds)
-2. Bridge always provides the latest GPS position from Sailaway
+2. Bridge provides extrapolated positions that change smoothly along the boat's course
 3. Plugin compares new position with previous position
 4. Calculates bearing (angle) between the two points
 5. Rotates arrow to match calculated bearing
 6. Result: Stable arrow pointing in direction of actual boat movement (Course Over Ground)
 
-**Key to stable heading**: By not rate limiting the GPS data, the plugin always receives fresh position updates whenever it polls, ensuring smooth and stable arrow rotation without drift.
+**Key to stable heading**: Dead-reckoning ensures the plugin receives continuously changing positions extrapolated along the boat's actual course and speed, preventing identical consecutive positions that would cause the arrow to drift or revert to north.
 
 ## Troubleshooting
 
@@ -250,16 +260,24 @@ The **red arrow** direction is calculated by the Windy plugin:
 
 #### ❌ Position shows but arrow doesn't rotate or drifts back to north
 
-**Possible causes:**
-- Boat not moving (no course change)
-- Moving too slowly for significant position changes
-- Sailing in perfectly straight line
+**This issue has been FIXED in v1.1.0+ with dead-reckoning extrapolation!**
 
-**Solutions:**
-1. Turn your boat to see arrow rotation
-2. Arrow updates based on actual position changes between plugin polls
-3. More movement = more accurate heading display
-4. Verify you're actually under sail/power and moving
+**What was causing this:**
+- The Windy plugin polls every 500ms and calculates heading from consecutive position changes
+- When Sailaway's GPS updates were slower than the plugin's polling rate, the plugin would receive identical positions
+- Identical positions = no meaningful bearing calculation = arrow reverts to north
+
+**How the fix works:**
+- Bridge now captures Course Over Ground (COG) and speed from RMC sentences
+- Between real GPS updates, extrapolates position along the COG bearing
+- Generates synthetic GLL sentences with smoothly changing coordinates
+- Plugin always receives meaningful position deltas for stable bearing calculations
+
+**If you still see this issue:**
+1. Ensure you're running v1.1.0 or later (check About/version)
+2. Verify GPS data is appearing in the activity log
+3. Verify you're actually moving (check Sailaway shows speed > 0)
+4. Try turning your boat - arrow should rotate smoothly with course changes
 
 #### ❌ "Port 5000 already in use"
 
@@ -376,19 +394,55 @@ GitHub Actions automatically builds and attaches `.exe` to release.
 - **CPU Usage**: <1% idle, ~2% when processing
 - **Network Bandwidth**: ~200 bytes per GPS update from Sailaway (minimal)
 - **Latency**: <100ms from Sailaway to Windy
-- **Update Rate**: Continuous (no rate limiting - always serves latest position)
+- **Position Extrapolation**: Computed in real-time for each plugin poll (500ms intervals)
+- **Extrapolation Accuracy**: Uses spherical geometry and actual COG/speed from RMC data
+- **Coordinate Precision**: 5 decimal places in minutes (sub-meter accuracy)
+
+### Dead-Reckoning Implementation
+
+The bridge implements dead-reckoning navigation to provide smooth position updates:
+
+**Algorithm:**
+1. Parse incoming RMC sentences to capture:
+   - Course Over Ground (COG) in degrees true
+   - Speed Over Ground (SOG) in knots
+2. Parse GLL sentences to update actual position (latitude/longitude)
+3. When HTTP endpoint is polled:
+   - Calculate time elapsed since last real position update
+   - Compute distance traveled: `distance = speed × time_elapsed`
+   - Extrapolate new position along COG bearing using spherical geometry
+   - Generate synthetic GLL sentence with extrapolated coordinates
+   - Use minimum synthetic speed (0.5 m/s) when nearly stationary
+
+**Benefits:**
+- Eliminates identical consecutive positions that cause heading drift
+- Provides smooth, continuous position updates at plugin's poll rate
+- Maintains heading accuracy even between Sailaway GPS updates
+- No modification needed to Windy plugin
+
+**Tuning:**
+```python
+# Minimum synthetic speed (meters per second) when boat is stationary/slow
+# Default: 0.5 m/s (1.8 km/h) - creates visible position deltas for stable bearing
+speed_m_s = 0.5  # Adjust if needed for your use case
+```
 
 ### Code Modification
 
 Want to customize? The code is simple and well-commented:
 
-**Change log display frequency:**
+**Adjust dead-reckoning synthetic speed:**
 ```python
-# In sailaway_to_windy.py, find at the top:
-GPS_LOG_INTERVAL_SECONDS = 0.5  # Change to desired seconds (how often to display logs)
+# In start_http_server() -> GPSHandler.do_GET(), find:
+if speed_m_s < 0.5:
+    speed_m_s = 0.5  # Change to adjust minimum extrapolation speed
 ```
 
-**Note**: The actual GPS data is updated continuously (no rate limiting). This constant only controls how often updates are logged to the activity window to prevent flooding.
+**Change coordinate precision:**
+```python
+# In the to_ddmm() function within dead-reckoning code:
+return f"{degrees:02d}{minutes:07.5f}"  # .5f = 5 decimal places; adjust as needed
+```
 
 **Change HTTP port** (requires Windy plugin reconfiguration):
 ```python
@@ -396,12 +450,10 @@ GPS_LOG_INTERVAL_SECONDS = 0.5  # Change to desired seconds (how often to displa
 self.http_server = HTTPServer(('localhost', 5000), GPSHandler)  # Change 5000
 ```
 
-**Use different NMEA sentences:**
+**Disable dead-reckoning** (revert to raw GPS only):
 ```python
-# In receive_nmea_data() method, find:
-if ('$GPRMC' in line or '$IIRMC' in line or   # RMC has COG data
-    '$GPGLL' in line or '$IIGLL' in line):     # GLL position only
-    # Change to use only specific types if needed
+# In GPSHandler.do_GET(), comment out the extrapolation try/except block
+# and directly serve: self.wfile.write(bridge.latest_gps_data.encode())
 ```
 
 ### Dependencies
@@ -411,9 +463,33 @@ This application uses **only Python standard library**:
 - `threading` - Concurrent TCP and HTTP operations
 - `tkinter` - GUI interface
 - `http.server` - HTTP endpoint for Windy
-- `time`, `datetime` - Timestamps and rate limiting
+- `time`, `datetime` - Timestamps and dead-reckoning calculations
+- `math` - Spherical geometry for position extrapolation
 
 No external packages needed! 🎉
+
+## Diagnostic Tools
+
+The repository includes diagnostic scripts for troubleshooting:
+
+### `diagnose_nmea.py`
+Connects directly to Sailaway's NMEA feed and prints raw sentences:
+```bash
+python diagnose_nmea.py
+```
+- Shows all NMEA sentences from Sailaway (RMC, GLL, VTG, etc.)
+- Useful for verifying Sailaway is outputting data correctly
+- Helps identify which sentence types are available
+
+### `poll_gps.py`
+Mimics the Windy plugin's polling behavior:
+```bash
+python poll_gps.py
+```
+- Polls `http://localhost:5000/gps-data` every 500ms for 30 seconds
+- Shows exactly what the Windy plugin receives
+- Useful for verifying dead-reckoning extrapolation is working
+- Should show smoothly changing coordinates in the output
 
 ## Windy Plugin Information
 
@@ -462,14 +538,20 @@ A: Not with a single instance. You'd need multiple Sailaway instances on differe
 A: No! Everything runs locally on your computer/network. No internet connection required except for loading Windy.com.
 
 **Q: The arrow spins randomly sometimes?**
-A: This can happen when:
-- Boat is stationary or moving very slowly
-- GPS position changes are smaller than the plugin's bearing calculation threshold
-- This is normal behavior and will stabilize once moving at normal sailing speeds
-- The plugin needs sufficient position change between polls to calculate accurate bearing
+A: **This issue has been fixed in v1.1.0+!** The dead-reckoning extrapolation ensures the plugin always receives smoothly changing positions. If you still experience this:
+- Verify you're running v1.1.0 or later
+- Ensure GPS data is appearing in the activity log
+- Check that Sailaway shows your boat is actually moving (speed > 0)
+- The arrow should now rotate smoothly without random spinning or reverting to north
 
-**Q: Can I customize the update rate?**
-A: The GPS data is provided continuously with no rate limiting for best arrow stability. You can change the logging display interval by editing `GPS_LOG_INTERVAL_SECONDS` in the code, but this only affects what you see in the log window, not what the Windy plugin receives.
+**Q: How does dead-reckoning work?**
+A: The bridge captures your boat's Course Over Ground (COG) and speed from Sailaway's RMC sentences. Between real GPS updates, it mathematically extrapolates where your boat would be based on that course and speed, then generates synthetic position data. This ensures the Windy plugin always receives smoothly changing positions for stable heading calculations.
+
+**Q: Does dead-reckoning affect position accuracy?**
+A: No! The bridge constantly updates with real GPS positions from Sailaway. Dead-reckoning only fills in the gaps *between* real updates (which happen every ~2 seconds). The extrapolation uses your actual course and speed, so it accurately represents where your boat is moving.
+
+**Q: Can I disable dead-reckoning?**
+A: Yes, but it's not recommended as it may cause heading drift. You can comment out the extrapolation code in the `do_GET()` method and directly serve `bridge.latest_gps_data`. See the Technical Details section for code modification examples.
 
 ## Contributing
 
