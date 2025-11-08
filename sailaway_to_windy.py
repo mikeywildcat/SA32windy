@@ -19,6 +19,8 @@ class GPSBridge:
         self.latest_gps_data = ""  # Current GPS data being served to plugin
         self.previous_gps_data = ""  # Track previous NMEA sentence
         self.last_sent_position = (0.0, 0.0, 0.0)  # lat, lon, timestamp
+        self.last_rmc_cog = None  # course over ground in degrees from last RMC
+        self.last_rmc_speed = None  # speed in knots from last RMC
         self.is_running = False
         self.tcp_socket = None
         self.tcp_thread = None
@@ -69,6 +71,23 @@ class GPSBridge:
                 for line in lines[:-1]:
                     line = line.strip()
                     if line:
+                        # Capture RMC sentences to get COG and speed for dead-reckoning
+                        if '$GPRMC' in line or '$IIRMC' in line:
+                            try:
+                                parts = line.split(',')
+                                # RMC format: $GPRMC,hhmmss.ss,A,lat,NS,lon,EW,speed_knots,cog,...
+                                if len(parts) > 8:
+                                    speed = parts[7]
+                                    cog = parts[8]
+                                    if speed:
+                                        self.last_rmc_speed = float(speed)
+                                    if cog:
+                                        self.last_rmc_cog = float(cog)
+                            except Exception:
+                                # non-fatal; ignore malformed RMC
+                                pass
+                            # continue processing other sentence types
+                            continue
                         # Only process GLL sentences - Windy plugin can only parse GLL
                         # Plugin calculates bearing from position changes
                         # Strategy: Send positions with meaningful separation (distance OR time)
@@ -177,6 +196,75 @@ class GPSBridge:
                     self.end_headers()
                     # Only send data if we have valid GPS data
                     if bridge.latest_gps_data:
+                        try:
+                            # If we have recent RMC COG/speed information, use it to
+                            # dead-reckon a small extrapolated position so the Windy
+                            # plugin sees smooth movement between actual GLL updates.
+                            if bridge.last_rmc_cog is not None and bridge.last_sent_position[2] > 0:
+                                now = time.time()
+                                last_lat, last_lon, last_time = bridge.last_sent_position
+                                dt = max(0.0, now - last_time)
+
+                                # Convert speed from knots to m/s; if speed is tiny, synth a small value
+                                speed_knots = bridge.last_rmc_speed or 0.0
+                                speed_m_s = speed_knots * 0.514444
+                                if speed_m_s < 0.5:
+                                    # When nearly stationary, use a small synthetic speed to avoid
+                                    # identical consecutive positions (helps plugin bearing calc)
+                                    # 0.5 m/s ≈ 1.8 km/h — small but usually sufficient to create
+                                    # visible deltas at the GLL formatting precision.
+                                    speed_m_s = 0.5
+
+                                # Distance travelled since last_sent_position
+                                distance_m = speed_m_s * dt
+
+                                # Compute new lat/lon by moving distance_m along last_rmc_cog
+                                # using simple equirectangular approximation for small distances
+                                import math
+                                R = 6371000.0  # Earth radius in meters
+                                bearing_rad = math.radians(bridge.last_rmc_cog)
+                                delta_lat = (distance_m * math.cos(bearing_rad)) / R
+                                delta_lon = (distance_m * math.sin(bearing_rad)) / (R * math.cos(math.radians(last_lat) if last_lat != 0 else 0))
+
+                                new_lat = last_lat + math.degrees(delta_lat)
+                                new_lon = last_lon + math.degrees(delta_lon)
+
+                                # Build an NMEA-style GLL sentence using extrapolated coords
+                                def to_ddmm(coord, is_lat=True):
+                                    sign = '-' if coord < 0 else ''
+                                    coord = abs(coord)
+                                    if is_lat:
+                                        degrees = int(coord)
+                                        minutes = (coord - degrees) * 60
+                                        # Increase minutes precision to 5 decimals so small
+                                        # extrapolated movements are visible in the GLL string.
+                                        return f"{degrees:02d}{minutes:07.5f}"
+                                    else:
+                                        degrees = int(coord)
+                                        minutes = (coord - degrees) * 60
+                                        return f"{degrees:03d}{minutes:07.5f}"
+
+                                lat_str = to_ddmm(new_lat, is_lat=True)
+                                lat_dir = 'N' if new_lat >= 0 else 'S'
+                                lon_str = to_ddmm(new_lon, is_lat=False)
+                                lon_dir = 'E' if new_lon >= 0 else 'W'
+
+                                # Time field (UTC) with milliseconds
+                                utc = datetime.utcnow().strftime('%H%M%S.%f')[:-3]
+
+                                body = f"GPGLL,{lat_str},{lat_dir},{lon_str},{lon_dir},{utc},,A,S"
+                                # Compute checksum
+                                cs = 0
+                                for ch in body:
+                                    cs ^= ord(ch)
+                                sentence = f"${body}*{cs:02X}"
+
+                                self.wfile.write(sentence.encode())
+                                return
+                        except Exception:
+                            # Fall back to serving the raw latest data on any error
+                            pass
+
                         self.wfile.write(bridge.latest_gps_data.encode())
                     else:
                         # Send empty response if no data yet
